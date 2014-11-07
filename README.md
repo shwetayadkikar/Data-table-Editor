@@ -56,7 +56,8 @@ fields.push({  "type": "text" });
 ```
 
 ###Validations:
-In order for validations to work, create a hidden field in <th> of every column with name "colInputType" and set the type as either 'string','%', 'Float'. Strings will allow all possible strings. '%' is for percentages, 'Float' is for numbers
+In order for validations to work, create a hidden field in 'th' tag of every column of the HTML table with name "colInputType" and set the type as either 'string','%', 'Float'. Strings will allow all possible strings. '%' is for percentages, 'Float' is for numbers
+(I will be working on validations part to make it independent of such hidden field)
 
 
 P.S. : Editor uses tostr.js for displaying errors. So include that.
