@@ -54,3 +54,9 @@ fields.push({  "type": "text" });
     });
 
 ```
+
+###Validations:
+In order for validations to work, create a hidden field in <th> of every column with name "colInputType" and set the type as either 'string','%', 'Float'. Strings will allow all possible strings. '%' is for percentages, 'Float' is for numbers
+
+
+P.S. : Editor uses tostr.js for displaying errors. So include that.
