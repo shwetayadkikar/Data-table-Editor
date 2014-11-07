@@ -1,0 +1,238 @@
+﻿var tableEditor = {
+    table: '',
+
+    fields: [],
+
+    currentCell: {},
+
+    currentRowIndex: -1,
+
+    currentColIndex: 0,
+
+    currentCellOldValue: {},
+
+    oldCellText: {},
+
+    keyPressed: false,
+
+    ajax: '',
+
+    dataTable : {},
+
+    init: function (inputTable, inputFields, posturl, datatable) {
+        this.table = inputTable;
+        this.dataTable = datatable;
+        this.fields = inputFields;
+        this.ajax = posturl;
+        this.setArrowKeysNavigation();
+    },
+
+    isCellInEditMode: function (cell) {
+        return !($(cell).find('select').length <= 0 && $(cell).find('input[type="text"]').length <= 0);
+    },
+
+    makeCellEditable: function (cell) {
+        if ($(cell).text().toString() != "") {
+            if (this.currentCell != cell || (this.currentCell == cell && !this.isCellInEditMode(cell))) {
+                //save for key navigation
+                this.oldCellText = this.currentCellOldValue;
+
+                var self = this;
+                console.log('inside makeEditable');
+                //remove input controls in other cells when any cell is clicked
+                //var otherEditableCells = $(this.table).find('tbody td').not(this.currentCell).filter(function () { return ($(this).find('select').length > 0 || $(this).find('input[type="text"]').length > 0) });
+
+                //otherEditableCells.each(function () {
+                //    self.updateCell(this);
+                //});
+
+                var colIndex = $(cell).closest('table').find('th').eq($(cell).index()).data("id");
+                var type = this.fields[colIndex].type;
+                this.currentCell = cell;
+
+                this.currentCellOldValue = $(cell).text();
+
+                this.currentRowIndex = self.dataTable.row($(tableEditor.currentCell).parent()).index();
+                this.currentColIndex = $(tableEditor.currentCell).index();
+
+                //create an input element on the basis of type
+                if (type.toUpperCase() === "SELECT") {
+                    var options = this.fields[colIndex].options;
+                    elem = $('<select id ="' + colIndex + '" class="dropdown">');
+                    for (var i = 0; i < options.length; i++) {
+                        var splitData = options[i].split("|");
+                        if (splitData[0] === $(cell).text()) {
+                            elem.append('<option value="' + splitData[0] + '" selected="selected" id="' + splitData[1] + '">' + splitData[0] + '</option>');
+                        }
+                        else {
+                            elem.append('<option value="' + splitData[0] + '" id="' + splitData[1] + '">' + splitData[0] + '</option>');
+                        }
+                    }
+                }
+                else {
+                    elem = $('<input id ="' + colIndex + '" type="text" value="' + $(cell).text() + '" style="width:75%">');
+                }
+                $(cell).html(elem);
+                $("#" + colIndex).focus();
+
+            }
+        }
+    },
+
+    updateCell: function (cell) {
+        var isSelect = $(cell).find("select").length > 0;
+        var newval = isSelect ? $(cell).find("select").val() : $(cell).find("input[type='text']").val();
+        var value = isSelect ? $(cell).find("select option:selected").attr("id").trim() : "";
+        console.log("updating " + newval);
+        $(cell).text(newval);
+        this.postData(cell, value);
+    },
+
+    postData: function (cell, value) {
+        console.log("this.oldCellText " + this.oldCellText);
+        console.log("current cell text " + $(cell).text());
+        var self = this;
+        if (((!this.keyPressed) && this.currentCellOldValue != $(cell).text()) || (this.keyPressed && this.oldCellText != $(cell).text())) {
+            var postModel = {
+                ColIndex: $(cell).closest('table').find('th').eq($(cell).index()).data("key"),
+                RowIndex: self.dataTable.data()[this.currentRowIndex][0].split(',')[1],
+                grade: $(cell).text(),
+                value: value
+            };
+
+            console.log("post now: " + JSON.stringify(postModel));
+            ////ajax call
+            $.ajax({
+                url: self.ajax,
+                data: postModel,
+                cache: false,
+                type: "POST",
+                success: function (data) {
+                    toastr.success(data);
+                }
+            });
+            this.keyPressed = false;
+        }
+        //this.currentCell = {};
+        //this.currentRowIndex = -1;
+        //this.currentColIndex = -1;
+    },
+
+    setArrowKeysNavigation: function () {
+        var self = this;
+        $(this.table).on('blur', 'tbody td', function (e) {
+            console.log('inside blur');
+            //validate the data being posted
+            if (self.validateCellData(this)) {
+                tableEditor.updateCell(this);
+            }
+            else {
+                toastr.error("invalid input");
+            }
+        });
+
+        $(document).keydown(function (e) {
+            console.log(e.keyCode);
+            if (self.validateCellData(self.currentCell)) {
+                switch (e.keyCode) {
+                    case 37:
+                        console.log("left clicked");
+                        if (self.currentColIndex > 0) {
+                            self.currentColIndex = self.currentColIndex - 1;
+                        }
+                        console.log("col : " + self.currentColIndex);
+                        console.log("row : " + self.currentRowIndex);
+                        var newCell = $($(self.table + ' tr')[self.currentRowIndex + 1]).find('td')[self.currentColIndex];
+                        console.log("newcell : " + $(newCell).text());
+                        //skip the empty cells
+                        while ($(newCell).text() === "" && self.currentColIndex > 0) {
+                            self.currentColIndex = self.currentColIndex - 1;
+                            var newCell = $($(self.table + ' tr')[self.currentRowIndex + 1]).find('td')[self.currentColIndex];
+                        }
+                        self.keyPressed = true;
+                        self.makeCellEditable(newCell);
+                        break;
+                        //case 38:
+                        //    console.log("up");
+                        //    if (self.currentColIndex > 0) {
+                        //        self.currentRowIndex = self.currentRowIndex - 1;
+                        //    }
+                        //    console.log("col : " + self.currentColIndex);
+                        //    console.log("row : " + self.currentRowIndex);
+                        //    var newCell = $($('#myDataTable tr')[self.currentRowIndex]).find('td')[self.currentColIndex];
+                        //    console.log("newcell : " + $(newCell).text());
+                        //    self.keyPressed = true;
+                        //    self.makeCellEditable(newCell);
+                        //    break;
+                    case 39:
+                        console.log("right");
+                        if (self.currentColIndex < self.fields.length) {
+                            self.currentColIndex = self.currentColIndex + 1;
+
+                            console.log("col : " + self.currentColIndex);
+                            console.log("row : " + self.currentRowIndex);
+                            var newCell = $($(self.table + ' tr')[self.currentRowIndex + 1]).find('td')[self.currentColIndex];
+                            console.log("newcell : " + $(newCell).text());
+                            //skip the empty cells
+                            while ($(newCell).text() === "" && self.currentColIndex < self.fields.length) {
+                                self.currentColIndex = self.currentColIndex + 1;
+                                var newCell = $($(self.table + ' tr')[self.currentRowIndex + 1]).find('td')[self.currentColIndex];
+                            }
+                            self.keyPressed = true;
+                            self.makeCellEditable(newCell);
+                        }
+                        break;
+                    case 9:
+                        console.log("down");
+                        if (self.currentRowIndex < $(self.table + " tr").length - 1) {
+
+                            self.currentRowIndex = self.currentRowIndex + 1;
+                            console.log("col : " + self.currentColIndex);
+                            console.log("row : " + self.currentRowIndex);
+                            var newCell = $($(self.table + ' tr')[self.currentRowIndex + 1]).find('td')[self.currentColIndex];
+                            console.log("newcell : " + $(newCell).text());
+                            //skip the empty cells
+                            while ($(newCell).text() === "" && self.currentRowIndex + 1 < $(self.table + " tr").length - 1) {
+                                self.currentRowIndex = self.currentRowIndex + 1;
+                                var newCell = $($(self.table + ' tr')[self.currentRowIndex + 1]).find('td')[self.currentColIndex];
+                            }
+
+                            self.keyPressed = true;
+                            self.makeCellEditable(newCell);
+                        }
+                        break;
+                }
+            }
+        });
+    },
+
+    validateCellData: function (cell) {
+        var typeForValidation = $(cell).closest('table').find('th').eq($(cell).index()).find("input[name='colInputType']");
+        var inputTextCtrl = $(cell).find('input[type="text"]');
+        var text = inputTextCtrl.length > 0 ? inputTextCtrl.val() : "";
+        if (text.trim() == "-") return true;
+        var isValid = true;
+        switch (typeForValidation.val()) {
+            case "%":
+                isValid = validatePercentage(text);
+                break;
+            case "Float":
+                isValid = validateFloat(text);
+                break;
+        }
+        return isValid;
+    }
+}
+
+function isAlphabet(alphabet) {
+    return (alphabet.match(/^[a-zA-Z]+$/) && alphabet != "");
+}
+
+function validatePercentage(text) {
+    return !isNaN(text) && parseInt(text) <= 100 && parseInt(text) >= 0;
+}
+
+function validateFloat(text) {
+    return !isNaN(text);
+}
+
