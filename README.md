@@ -61,3 +61,5 @@ In order for validations to work, create a hidden field in 'th' tag of every col
 
 
 P.S. : Editor uses tostr.js for displaying errors. So include that.
+
+Check the [Examples](https://github.com/shwetayadkikar/Data-table-Editor/tree/Examples) branch for an MVC example that uses the table Editor
